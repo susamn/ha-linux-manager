@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Linux Server Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        async function callApi(endpoint, serverName) {
+            const response = await fetch(`${endpoint}/${serverName}`, { method: 'POST' });
+            const data = await response.json();
+            if (data.success) {
+                alert(data.message || "Action initiated");
+                location.reload();
+            } else {
+                alert("Error: " + (data.error || "Unknown error"));
+            }
+        }
+
+        async function refreshStatus() {
+            const response = await fetch('api/status');
+            const data = await response.json();
+            data.forEach(s => {
+                const el = document.getElementById(`status-${s.name}`);
+                if (el) {
+                    el.innerText = s.status;
+                    el.className = s.status === 'Online' ? 'text-green-500' : (s.status === 'Shutting Down' ? 'text-orange-500' : 'text-red-500');
+                }
+                const btnOff = document.getElementById(`btn-off-${s.name}`);
+                if (btnOff) {
+                    btnOff.disabled = s.is_busy || s.status === 'Offline';
+                    btnOff.innerText = s.is_busy ? 'Processing...' : 'Turn Off';
+                }
+            });
+        }
+
+        setInterval(refreshStatus, 5000);
+    </script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-8">Linux Server Power Manager</h1>
+        
+        <div class="grid gap-6">
+            {% for s in servers %}
+            <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-semibold">{{ s.name }}</h2>
+                    <p class="text-gray-600">{{ s.host }}</p>
+                    <p class="text-sm text-gray-400">Plug: {{ s.plug }}</p>
+                </div>
+                
+                <div class="text-center px-4">
+                    <span id="status-{{ s.name }}" class="font-bold {{ 'text-green-500' if s.status == 'Online' else 'text-red-500' }}">
+                        {{ s.status }}
+                    </span>
+                </div>
+
+                <div class="flex gap-4">
+                    <button 
+                        onclick="callApi('turn_on', '{{ s.name }}')"
+                        class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition"
+                    >
+                        Turn On
+                    </button>
+                    <button 
+                        id="btn-off-{{ s.name }}"
+                        onclick="callApi('turn_off', '{{ s.name }}')"
+                        {% if s.is_busy or s.status == 'Offline' %}disabled{% endif %}
+                        class="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white font-bold py-2 px-4 rounded transition"
+                    >
+                        {{ 'Processing...' if s.is_busy else 'Turn Off' }}
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+            
+            {% if not servers %}
+            <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4">
+                <p>No servers configured. Please add them in the Add-on configuration.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
