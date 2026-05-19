@@ -8,7 +8,10 @@ from .ssh_manager import ServerManager
 import logging
 
 app = FastAPI()
-templates = Jinja2Templates(directory="src/templates")
+
+# Get absolute path to templates
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
 # Load configuration
 CONFIG_PATH = "/data/options.json"
@@ -42,11 +45,14 @@ async def index(request: Request):
             "plug": s.plug_entity
         })
     
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "servers": server_data,
-        "ingress_path": ingress_path
-    })
+    return templates.TemplateResponse(
+        request=request, 
+        name="index.html", 
+        context={
+            "servers": server_data,
+            "ingress_path": ingress_path
+        }
+    )
 
 @app.post("/turn_on/{server_name}")
 async def turn_on(server_name: str):
