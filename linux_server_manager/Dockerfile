@@ -1,19 +1,21 @@
-ARG BUILD_FROM=homeassistant/amd64-base:latest
-FROM $BUILD_FROM
+ARG BUILD_FROM
+FROM ${BUILD_FROM}
 
-# Install dependencies
+# Install system dependencies
+# We use system-provided python packages where possible for reliability and speed
 RUN apk add --no-cache \
     python3 \
     py3-pip \
+    py3-paramiko \
+    py3-aiohttp \
+    py3-jinja2 \
+    py3-fastapi \
+    py3-uvicorn \
     openssh-client \
     iputils \
     bash
 
 WORKDIR /app
-
-# Copy requirements and install
-COPY requirements.txt .
-RUN pip3 install --no-cache-dir -r requirements.txt
 
 # Copy source code
 COPY . .
