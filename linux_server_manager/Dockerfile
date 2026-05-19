@@ -3,14 +3,11 @@ FROM $BUILD_FROM
 
 # Install system dependencies
 RUN apk add --no-cache \
-    python3 \
-    py3-pip \
     openssh-client \
     iputils \
     bash \
     gcc \
     musl-dev \
-    python3-dev \
     libffi-dev \
     openssl-dev \
     make
