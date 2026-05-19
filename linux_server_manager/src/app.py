@@ -28,6 +28,9 @@ servers = [
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
+    # Detect the ingress path from the request headers if available
+    ingress_path = request.headers.get("X-Ingress-Path", "")
+    
     server_data = []
     for s in servers:
         status = await s.get_status()
@@ -41,7 +44,8 @@ async def index(request: Request):
     
     return templates.TemplateResponse("index.html", {
         "request": request,
-        "servers": server_data
+        "servers": server_data,
+        "ingress_path": ingress_path
     })
 
 @app.post("/turn_on/{server_name}")

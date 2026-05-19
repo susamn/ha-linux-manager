@@ -9,7 +9,7 @@ startup: services
 boot: auto
 init: false
 ingress: true
-ingress_port: 8000
+ingress_port: 13612
 panel_icon: "mdi:server"
 panel_title: "Linux Manager"
 host_network: true

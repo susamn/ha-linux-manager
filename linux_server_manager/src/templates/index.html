@@ -6,8 +6,10 @@
     <title>Linux Server Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
+        const INGRESS_PATH = "{{ ingress_path }}";
+
         async function callApi(endpoint, serverName) {
-            const response = await fetch(`${endpoint}/${serverName}`, { method: 'POST' });
+            const response = await fetch(`${INGRESS_PATH}/${endpoint}/${serverName}`, { method: 'POST' });
             const data = await response.json();
             if (data.success) {
                 alert(data.message || "Action initiated");
@@ -18,7 +20,7 @@
         }
 
         async function refreshStatus() {
-            const response = await fetch('api/status');
+            const response = await fetch(`${INGRESS_PATH}/api/status`);
             const data = await response.json();
             data.forEach(s => {
                 const el = document.getElementById(`status-${s.name}`);
