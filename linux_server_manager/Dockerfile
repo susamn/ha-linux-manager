@@ -1,21 +1,25 @@
 ARG BUILD_FROM
-FROM ${BUILD_FROM}
+FROM $BUILD_FROM
 
 # Install system dependencies
-# We use system-provided python packages where possible for reliability and speed
 RUN apk add --no-cache \
     python3 \
     py3-pip \
-    py3-paramiko \
-    py3-aiohttp \
-    py3-jinja2 \
-    py3-fastapi \
-    py3-uvicorn \
     openssh-client \
     iputils \
-    bash
+    bash \
+    gcc \
+    musl-dev \
+    python3-dev \
+    libffi-dev \
+    openssl-dev \
+    make
 
 WORKDIR /app
+
+# Copy requirements and install
+COPY requirements.txt .
+RUN pip3 install --no-cache-dir -r requirements.txt
 
 # Copy source code
 COPY . .
