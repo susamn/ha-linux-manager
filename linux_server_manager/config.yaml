@@ -3,9 +3,8 @@ version: "1.0.0"
 slug: "linux_server_manager"
 description: "Manage and safely shut down remote Linux servers using SSH and Smart Plugs."
 arch:
-  - amd64
-  - armv7
   - aarch64
+  - amd64
 startup: services
 boot: auto
 ingress: true
