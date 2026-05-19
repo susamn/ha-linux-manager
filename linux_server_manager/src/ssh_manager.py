@@ -39,12 +39,13 @@ async def is_reachable(host):
         return False
 
 class ServerManager:
-    def __init__(self, name, host, user, password, plug_entity):
+    def __init__(self, name, host, user, password, plug_entity, lock_code=None):
         self.name = name
         self.host = host
         self.user = user
         self.password = password
         self.plug_entity = plug_entity
+        self.lock_code = lock_code
         self.status = "Unknown"
         self.is_busy = False
 

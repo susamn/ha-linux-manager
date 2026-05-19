@@ -8,7 +8,16 @@
     <script>
         const INGRESS_PATH = "{{ ingress_path }}";
 
-        async function callApi(endpoint, serverName) {
+        async function callApi(endpoint, serverName, lockCode) {
+            if (lockCode) {
+                const input = prompt(`Please enter the lock code for ${serverName}:`);
+                if (input === null) return; // User cancelled
+                if (input !== lockCode) {
+                    alert("Incorrect lock code.");
+                    return;
+                }
+            }
+
             const response = await fetch(`${INGRESS_PATH}/${endpoint}/${serverName}`, { method: 'POST' });
             const data = await response.json();
             if (data.success) {
@@ -60,14 +69,14 @@
 
                 <div class="flex gap-4">
                     <button 
-                        onclick="callApi('turn_on', '{{ s.name }}')"
+                        onclick="callApi('turn_on', '{{ s.name }}', '{{ s.lock_code }}')"
                         class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition"
                     >
                         Turn On
                     </button>
                     <button 
                         id="btn-off-{{ s.name }}"
-                        onclick="callApi('turn_off', '{{ s.name }}')"
+                        onclick="callApi('turn_off', '{{ s.name }}', '{{ s.lock_code }}')"
                         {% if s.is_busy or s.status == 'Offline' %}disabled{% endif %}
                         class="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white font-bold py-2 px-4 rounded transition"
                     >

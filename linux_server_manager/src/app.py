@@ -42,7 +42,8 @@ async def index(request: Request):
             "host": s.host,
             "status": status,
             "is_busy": s.is_busy,
-            "plug": s.plug_entity
+            "plug": s.plug_entity,
+            "lock_code": s.lock_code
         })
     
     return templates.TemplateResponse(
