@@ -14,7 +14,7 @@ templates = Jinja2Templates(directory="src/templates")
 CONFIG_PATH = "/data/options.json"
 if not os.path.exists(CONFIG_PATH):
     # Fallback for local testing
-    CONFIG_PATH = "options.json"
+    CONFIG_PATH = os.path.join(os.getcwd(), "options.json")
     if not os.path.exists(CONFIG_PATH):
         with open(CONFIG_PATH, "w") as f:
             json.dump({"servers": []}, f)
