@@ -5,80 +5,44 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Linux Server Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        const INGRESS_PATH = "{{ ingress_path }}";
-
-        async function callApi(endpoint, serverName, lockCode) {
-            if (lockCode) {
-                const input = prompt(`Please enter the lock code for ${serverName}:`);
-                if (input === null) return; // User cancelled
-                if (input !== lockCode) {
-                    alert("Incorrect lock code.");
-                    return;
-                }
-            }
-
-            const response = await fetch(`${INGRESS_PATH}/${endpoint}/${serverName}`, { method: 'POST' });
-            const data = await response.json();
-            if (data.success) {
-                alert(data.message || "Action initiated");
-                location.reload();
-            } else {
-                alert("Error: " + (data.error || "Unknown error"));
-            }
-        }
-
-        async function refreshStatus() {
-            const response = await fetch(`${INGRESS_PATH}/api/status`);
-            const data = await response.json();
-            data.forEach(s => {
-                const el = document.getElementById(`status-${s.name}`);
-                if (el) {
-                    el.innerText = s.status;
-                    el.className = s.status === 'Online' ? 'text-green-500' : (s.status === 'Shutting Down' ? 'text-orange-500' : 'text-red-500');
-                }
-                const btnOff = document.getElementById(`btn-off-${s.name}`);
-                if (btnOff) {
-                    btnOff.disabled = s.is_busy || s.status === 'Offline';
-                    btnOff.innerText = s.is_busy ? 'Processing...' : 'Turn Off';
-                }
-            });
-        }
-
-        setInterval(refreshStatus, 5000);
-    </script>
+    <style>
+        [v-cloak] { display: none; }
+        .modal-enter { opacity: 0; transform: scale(0.95); }
+        .modal-enter-active { transition: all 0.2s ease-out; }
+        .modal-leave-active { transition: all 0.15s ease-in; }
+        .modal-leave-to { opacity: 0; transform: scale(0.95); }
+    </style>
 </head>
-<body class="bg-gray-100 p-8">
+<body class="bg-gray-100 p-4 md:p-8 min-h-screen">
     <div class="max-w-4xl mx-auto">
-        <h1 class="text-3xl font-bold mb-8">Linux Server Power Manager</h1>
+        <h1 class="text-3xl font-bold mb-8 text-gray-800">Linux Server Power Manager</h1>
         
         <div class="grid gap-6">
             {% for s in servers %}
-            <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
-                <div>
-                    <h2 class="text-xl font-semibold">{{ s.name }}</h2>
-                    <p class="text-gray-600">{{ s.host }}</p>
-                    <p class="text-sm text-gray-400">Plug: {{ s.plug }}</p>
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col md:flex-row items-center justify-between transition hover:shadow-md">
+                <div class="mb-4 md:mb-0 text-center md:text-left">
+                    <h2 class="text-xl font-bold text-gray-800">{{ s.name }}</h2>
+                    <p class="text-gray-500 font-mono text-sm">{{ s.host }}</p>
+                    <div class="mt-1 flex items-center justify-center md:justify-start gap-2">
+                        <span class="w-2 h-2 rounded-full {{ 'bg-green-500' if s.status == 'Online' else ('bg-orange-500' if s.status == 'Shutting Down' else 'bg-red-500') }}"></span>
+                        <span id="status-{{ s.name }}" class="text-sm font-medium uppercase tracking-wider {{ 'text-green-600' if s.status == 'Online' else ('text-orange-600' if s.status == 'Shutting Down' else 'text-red-600') }}">
+                            {{ s.status }}
+                        </span>
+                    </div>
                 </div>
                 
-                <div class="text-center px-4">
-                    <span id="status-{{ s.name }}" class="font-bold {{ 'text-green-500' if s.status == 'Online' else 'text-red-500' }}">
-                        {{ s.status }}
-                    </span>
-                </div>
-
-                <div class="flex gap-4">
+                <div class="flex gap-3">
                     <button 
-                        onclick="callApi('turn_on', '{{ s.name }}', '{{ s.lock_code }}')"
-                        class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition"
+                        onclick="showActionModal('turn_on', '{{ s.name }}', '{{ s.lock_code }}')"
+                        class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-6 rounded-lg shadow-sm transition-all active:scale-95"
                     >
                         Turn On
                     </button>
                     <button 
                         id="btn-off-{{ s.name }}"
-                        onclick="callApi('turn_off', '{{ s.name }}', '{{ s.lock_code }}')"
+                        onclick="showActionModal('turn_off', '{{ s.name }}', '{{ s.lock_code }}')"
                         {% if s.is_busy or s.status == 'Offline' %}disabled{% endif %}
-                        class="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white font-bold py-2 px-4 rounded transition"
+                        class="bg-rose-600 hover:bg-rose-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold py-2.5 px-6 rounded-lg shadow-sm transition-all active:scale-95"
                     >
                         {{ 'Processing...' if s.is_busy else 'Turn Off' }}
                     </button>
@@ -87,11 +51,156 @@
             {% endfor %}
             
             {% if not servers %}
-            <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4">
-                <p>No servers configured. Please add them in the Add-on configuration.</p>
+            <div class="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-lg">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-amber-700 font-medium">No servers configured. Please add them in the Add-on configuration.</p>
+                    </div>
+                </div>
             </div>
             {% endif %}
         </div>
     </div>
+
+    <!-- Modern Modal Container -->
+    <div id="modal-backdrop" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-40 hidden flex items-center justify-center p-4">
+        <div id="modal-content" class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transition-all duration-200 opacity-0 scale-95">
+            <div class="p-6">
+                <div id="modal-icon-container" class="w-12 h-12 rounded-full flex items-center justify-center mb-4">
+                    <!-- Icon injected by JS -->
+                </div>
+                <h3 id="modal-title" class="text-xl font-bold text-gray-900 mb-2">Confirm Action</h3>
+                <p id="modal-desc" class="text-gray-500 mb-6">Are you sure you want to perform this action?</p>
+                
+                <div id="lock-input-container" class="hidden mb-6">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Enter Lock Code</label>
+                    <input type="password" id="modal-lock-input" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder="••••">
+                    <p id="lock-error" class="hidden text-rose-500 text-xs mt-2 font-medium">Invalid lock code. Please try again.</p>
+                </div>
+
+                <div class="flex gap-3 mt-6">
+                    <button onclick="hideModal()" class="flex-1 px-4 py-3 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition">Cancel</button>
+                    <button id="modal-confirm-btn" class="flex-1 px-4 py-3 rounded-xl font-bold text-white transition shadow-sm">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const INGRESS_PATH = "{{ ingress_path }}";
+        let currentAction = null;
+
+        const modalBackdrop = document.getElementById('modal-backdrop');
+        const modalContent = document.getElementById('modal-content');
+        const lockInputContainer = document.getElementById('lock-input-container');
+        const lockInput = document.getElementById('modal-lock-input');
+        const lockError = document.getElementById('lock-error');
+        const confirmBtn = document.getElementById('modal-confirm-btn');
+
+        function showActionModal(endpoint, serverName, lockCode) {
+            currentAction = { endpoint, serverName, lockCode };
+            
+            const isOff = endpoint === 'turn_off';
+            document.getElementById('modal-title').innerText = isOff ? 'Shut Down Server?' : 'Power On Server?';
+            document.getElementById('modal-desc').innerText = `You are about to ${isOff ? 'shut down' : 'power on'} ${serverName}.`;
+            
+            const iconCont = document.getElementById('modal-icon-container');
+            if(isOff) {
+                iconCont.className = "w-12 h-12 rounded-full flex items-center justify-center mb-4 bg-rose-100 text-rose-600";
+                iconCont.innerHTML = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636"></path></svg>';
+                confirmBtn.className = "flex-1 px-4 py-3 rounded-xl font-bold text-white bg-rose-600 hover:bg-rose-700 transition shadow-sm";
+            } else {
+                iconCont.className = "w-12 h-12 rounded-full flex items-center justify-center mb-4 bg-emerald-100 text-emerald-600";
+                iconCont.innerHTML = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>';
+                confirmBtn.className = "flex-1 px-4 py-3 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition shadow-sm";
+            }
+
+            lockInputContainer.classList.toggle('hidden', !lockCode);
+            lockInput.value = '';
+            lockError.classList.add('hidden');
+            
+            modalBackdrop.classList.remove('hidden');
+            setTimeout(() => {
+                modalContent.classList.remove('opacity-0', 'scale-95');
+                if(lockCode) lockInput.focus();
+            }, 10);
+
+            confirmBtn.onclick = executeAction;
+        }
+
+        function hideModal() {
+            modalContent.classList.add('opacity-0', 'scale-95');
+            setTimeout(() => {
+                modalBackdrop.classList.add('hidden');
+            }, 150);
+        }
+
+        async function executeAction() {
+            const { endpoint, serverName, lockCode } = currentAction;
+            
+            if (lockCode) {
+                if (lockInput.value !== lockCode) {
+                    lockError.classList.remove('hidden');
+                    lockInput.classList.add('border-rose-500', 'ring-rose-200');
+                    return;
+                }
+            }
+
+            confirmBtn.disabled = true;
+            confirmBtn.innerText = "Processing...";
+
+            try {
+                const response = await fetch(`${INGRESS_PATH}/${endpoint}/${serverName}`, { method: 'POST' });
+                const data = await response.json();
+                hideModal();
+                if (!data.success) {
+                    // Re-use modal for error if needed, but for now just refresh
+                    console.error(data.error);
+                }
+                refreshStatus();
+            } catch (e) {
+                console.error(e);
+                hideModal();
+            }
+        }
+
+        async function refreshStatus() {
+            try {
+                const response = await fetch(`${INGRESS_PATH}/api/status`);
+                const data = await response.json();
+                data.forEach(s => {
+                    const statusEl = document.getElementById(`status-${s.name}`);
+                    if (statusEl) {
+                        statusEl.innerText = s.status;
+                        const colorClass = s.status === 'Online' ? 'text-green-600' : (s.status === 'Shutting Down' ? 'text-orange-600' : 'text-red-600');
+                        statusEl.className = `text-sm font-medium uppercase tracking-wider ${colorClass}`;
+                        
+                        const indicator = statusEl.previousElementSibling;
+                        if(indicator) {
+                            const bgClass = s.status === 'Online' ? 'bg-green-500' : (s.status === 'Shutting Down' ? 'bg-orange-500' : 'bg-red-500');
+                            indicator.className = `w-2 h-2 rounded-full ${bgClass}`;
+                        }
+                    }
+                    const btnOff = document.getElementById(`btn-off-${s.name}`);
+                    if (btnOff) {
+                        btnOff.disabled = s.is_busy || s.status === 'Offline' || s.status === 'Shutting Down';
+                        btnOff.innerText = (s.is_busy || s.status === 'Shutting Down') ? 'Processing...' : 'Turn Off';
+                    }
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        setInterval(refreshStatus, 5000);
+        
+        // Close modal on escape
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') hideModal();
+        });
+    </script>
 </body>
 </html>
