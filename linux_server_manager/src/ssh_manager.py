@@ -88,7 +88,7 @@ class ServerManager:
             logger.info(f"Waiting for {self.host} to go offline...")
             max_retries = 24  # 2 minutes (5s intervals)
             for _ in range(max_retries):
-                await asyncio.sleep(5)
+                await asyncio.sleep(15) # Wait 15s between checks to give it time to shutdown
                 if not await is_reachable(self.host):
                     logger.info(f"{self.host} is unreachable. Waiting 10s safety buffer...")
                     await asyncio.sleep(10)

@@ -1,5 +1,5 @@
 name: "Linux Server Power Manager"
-version: "1.0.1"
+version: "1.0.2"
 slug: "linux_server_manager"
 description: "Manage and safely shut down remote Linux servers using SSH and Smart Plugs."
 arch:
